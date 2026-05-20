@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LifeMap ✦</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP','Segoe UI',sans-serif;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+.fi{animation:fadeIn .3s ease}
+.pi{animation:popIn .25s cubic-bezier(.34,1.56,.64,1)}
+input::placeholder,textarea::placeholder{opacity:.4}
+textarea{resize:vertical}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useRef,useEffect}=React;
+
+const load=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+const LANGS={ja:{name:"日本語",flag:"🇯🇵"},en:{name:"English",flag:"🇺🇸"},zh:{name:"中文",flag:"🇨🇳"},ko:{name:"한국어",flag:"🇰🇷"},es:{name:"Español",flag:"🇪🇸"},fr:{name:"Français",flag:"🇫🇷"}};
+const MEDIA={ja:["アニメ","ドラマ","映画","曲","本","ゲーム","その他"],en:["Anime","Drama","Film","Song","Book","Game","Other"],zh:["动漫","剧集","电影","歌曲","书籍","游戏","其他"],ko:["애니","드라마","영화","노래","책","게임","기타"],es:["Anime","Drama","Película","Canción","Libro","Juego","Otro"],fr:["Anime","Série","Film","Chanson","Livre","Jeu","Autre"]};
+const MOODS={ja:["泣いた","笑った","鳥肌","刺さった","励まされた","共感した","切ない","エモい","好きすぎる","忘れられない"],en:["Cried","Laughed","Chills","Hit hard","Inspired","Relatable","Bittersweet","Emotional","Love it","Unforgettable"],zh:["哭了","笑了","起鸡皮疙瘩","触动心弦","受到鼓励","感同身受","惆怅","感动","太喜欢了","难以忘怀"],ko:["울었어","웃었어","소름돋아","가슴에 꽂혔어","힘받았어","공감돼","애틋해","에모해","너무 좋아","잊을 수 없어"],es:["Lloré","Reí","Escalofríos","Me llegó","Inspirado","Me identifiqué","Agridulce","Emotivo","Me encanta","Inolvidable"],fr:["Pleuré","Ri","Chair de poule","M'a touché","Inspiré","Compris","Mélancolique","Émouvant","J'adore","Inoubliable"]};
+const MEMOJI={"アニメ":"🎌","Anime":"🎌","动漫":"🎌","애니":"🎌","ドラマ":"📺","Drama":"📺","Série":"📺","剧集":"📺","드라마":"📺","映画":"🎬","Film":"🎬","Película":"🎬","电影":"🎬","영화":"🎬","曲":"🎵","Song":"🎵","Chanson":"🎵","歌曲":"🎵","노래":"🎵","Canción":"🎵","本":"📚","Book":"📚","Livre":"📚","书籍":"📚","책":"📚","Libro":"📚","ゲーム":"🎮","Game":"🎮","Jeu":"🎮","游戏":"🎮","게임":"🎮","Juego":"🎮"};
+
+const T={
+ja:{appName:"LifeMap",tagline:"あなたのペースで、あなたの地図を描こう",tabChat:"学習ナビ",tabSlide:"スライド",tabMemory:"記憶の扉",tabHistory:"履歴",chatPh:"本や学びたいこと、目標を話してみて...",send:"送信",reset:"リセット",slideTopic:"スライドのお題",slidePh:"例: 機械学習の基礎...",styleLabel:"スタイル",biz:"ビジネス",casual:"カジュアル",genSlide:"スライドを生成",generating:"生成中...",askQ:"このスライドについて質問する",askPh:"質問を入力...",askBtn:"質問する",memoT:"視点メモ",memoPh:"気づきをメモ...",saveMemo:"保存",histEmpty:"履歴はまだありません",slideOf:"枚目",prev:"◀",next:"▶",dark:"ダーク",memTitle:"記憶の扉",memSub:"心に残った言葉を、ここに閉じ込めておこう",addMem:"+ 記憶を追加",mediaType:"メディア種別",workTitle:"作品名",workPh:"例：進撃の巨人...",ep:"話数・巻数",epPh:"例：エピソード3...",ts:"時間（分:秒）",tsPh:"例：23:14",quote:"心に残ったセリフ・歌詞",quotePh:"ここに言葉を...",sit:"シチュエーション・雰囲気",sitPh:"どんな場面だった？",imp:"感想・なぜ刺さったか",impPh:"このセリフが刺さったのは...",moodL:"気分タグ",customT:"カスタムタグ（カンマ区切り）",customPh:"例：主人公, 友情",saveMem:"記憶を保存",savedMsg:"保存しました ✓",searchPh:"作品名・セリフで検索...",all:"すべて",noMem:"まだ記憶がありません\n心に残った言葉を保存してみよう",delConfirm:"この記憶を削除しますか？",edit:"編集",del:"削除",aiRefl:"AIに感想を聞く",aiThinking:"考え中...",total:"件の記憶",autosave:"💾 データは自動保存されます（タブを閉じても消えません）",sys:"あなたは「LifeMap」の学習ナビゲーターAIです。ユーザーは鬱療養中で、読書・学習・スキルアップで回復と成長を目指しています。優しく丁寧に、無理のない読了スケジュールやロードマップを提案し、励まし・共感を忘れずに。まず「今どんな本を持っていますか？」など優しく切り出してください。"},
+en:{appName:"LifeMap",tagline:"Draw your own map, at your own pace",tabChat:"Learning Nav",tabSlide:"Slides",tabMemory:"Memory Door",tabHistory:"History",chatPh:"Tell me about books or what you want to learn...",send:"Send",reset:"Reset",slideTopic:"Slide Topic",slidePh:"e.g. Machine Learning Basics...",styleLabel:"Style",biz:"Business",casual:"Casual",genSlide:"Generate Slides",generating:"Generating...",askQ:"Ask about this slide",askPh:"Enter your question...",askBtn:"Ask",memoT:"Memo",memoPh:"Note insights...",saveMemo:"Save",histEmpty:"No history yet",slideOf:"/",prev:"◀",next:"▶",dark:"Dark",memTitle:"Memory Door",memSub:"Lock away the words that touched your heart",addMem:"+ Add Memory",mediaType:"Media Type",workTitle:"Title",workPh:"e.g. Attack on Titan...",ep:"Episode / Volume",epPh:"e.g. Episode 3...",ts:"Timestamp",tsPh:"e.g. 23:14",quote:"Quote / Lyric",quotePh:"The words that stayed with you...",sit:"Situation / Atmosphere",sitPh:"What was the scene like?",imp:"Why it hit you",impPh:"This line hit me because...",moodL:"Mood Tags",customT:"Custom Tags (comma separated)",customPh:"e.g. friendship, farewell",saveMem:"Save Memory",savedMsg:"Saved ✓",searchPh:"Search by title or quote...",all:"All",noMem:"No memories yet\nSave words that touched your heart",delConfirm:"Delete this memory?",edit:"Edit",del:"Delete",aiRefl:"Ask AI for thoughts",aiThinking:"Thinking...",total:"memories",autosave:"💾 Data is auto-saved (persists after closing tab)",sys:"You are the Learning Navigator AI for LifeMap. The user is recovering from depression. Gently propose achievable plans, always encourage and empathize. Start warmly."},
+zh:{appName:"LifeMap",tagline:"用自己的节奏，画自己的地图",tabChat:"学习导航",tabSlide:"幻灯片",tabMemory:"记忆之门",tabHistory:"历史",chatPh:"告诉我你有什么书或想学什么...",send:"发送",reset:"重置",slideTopic:"幻灯片主题",slidePh:"例：机器学习基础...",styleLabel:"风格",biz:"商务",casual:"休闲",genSlide:"生成幻灯片",generating:"生成中...",askQ:"关于本幻灯片提问",askPh:"输入您的问题...",askBtn:"提问",memoT:"备忘",memoPh:"记录见解...",saveMemo:"保存",histEmpty:"暂无历史",slideOf:"/",prev:"◀",next:"▶",dark:"暗色",memTitle:"记忆之门",memSub:"把触动你心灵的话语留存在这里",addMem:"+ 添加记忆",mediaType:"媒体类型",workTitle:"作品名称",workPh:"例：进击的巨人...",ep:"集数/卷数",epPh:"例：第3集...",ts:"时间戳",tsPh:"例：23:14",quote:"台词/歌词",quotePh:"让你印象深刻的话...",sit:"场景/氛围",sitPh:"是什么样的场景？",imp:"为什么触动了你",impPh:"这句话触动我...",moodL:"心情标签",customT:"自定义标签（逗号）",customPh:"例：主角, 友情",saveMem:"保存记忆",savedMsg:"已保存 ✓",searchPh:"搜索...",all:"全部",noMem:"还没有记忆\n保存触动你心灵的话语吧",delConfirm:"确定删除？",edit:"编辑",del:"删除",aiRefl:"让AI分享感想",aiThinking:"思考中...",total:"条记忆",autosave:"💾 数据自动保存",sys:"你是LifeMap的学习导航AI。用户正在从抑郁症中恢复。温柔地提供无压力的计划，给予鼓励。"},
+ko:{appName:"LifeMap",tagline:"나만의 속도로, 나만의 지도를 그려요",tabChat:"학습 네비",tabSlide:"슬라이드",tabMemory:"기억의 문",tabHistory:"기록",chatPh:"책이나 배우고 싶은 것을 말해봐요...",send:"전송",reset:"초기화",slideTopic:"슬라이드 주제",slidePh:"예: 머신러닝 기초...",styleLabel:"스타일",biz:"비즈니스",casual:"캐주얼",genSlide:"슬라이드 생성",generating:"생성 중...",askQ:"이 슬라이드에 대해 질문",askPh:"질문을 입력하세요...",askBtn:"질문",memoT:"메모",memoPh:"깨달음 메모...",saveMemo:"저장",histEmpty:"아직 기록 없음",slideOf:"/",prev:"◀",next:"▶",dark:"다크",memTitle:"기억의 문",memSub:"마음에 남은 말을 여기에 담아두자",addMem:"+ 기억 추가",mediaType:"미디어 종류",workTitle:"작품명",workPh:"예: 진격의 거인...",ep:"화수/권수",epPh:"예: 에피소드 3...",ts:"타임스탬프",tsPh:"예: 23:14",quote:"대사/가사",quotePh:"여기에 말을...",sit:"상황/분위기",sitPh:"어떤 장면이었나요?",imp:"왜 마음에 꽂혔는지",impPh:"이 대사가 마음에...",moodL:"감정 태그",customT:"커스텀 태그",customPh:"예: 우정, 이별",saveMem:"기억 저장",savedMsg:"저장됨 ✓",searchPh:"검색...",all:"전체",noMem:"아직 기억 없음\n마음에 남은 말을 저장해보세요",delConfirm:"삭제하시겠습니까?",edit:"편집",del:"삭제",aiRefl:"AI에게 감상 물어보기",aiThinking:"생각 중...",total:"개의 기억",autosave:"💾 데이터 자동 저장",sys:"당신은 LifeMap AI입니다. 사용자는 우울증 회복 중입니다. 부드럽게 무리 없는 계획을 제안해주세요."},
+es:{appName:"LifeMap",tagline:"Dibuja tu mapa, a tu propio ritmo",tabChat:"Aprendizaje",tabSlide:"Slides",tabMemory:"Memoria",tabHistory:"Historial",chatPh:"Cuéntame qué libros tienes...",send:"Enviar",reset:"Reiniciar",slideTopic:"Tema",slidePh:"Ej: Machine Learning...",styleLabel:"Estilo",biz:"Profesional",casual:"Casual",genSlide:"Generar Slides",generating:"Generando...",askQ:"Preguntar sobre slide",askPh:"Escribe tu pregunta...",askBtn:"Preguntar",memoT:"Memo",memoPh:"Anota perspectivas...",saveMemo:"Guardar",histEmpty:"Sin historial",slideOf:"/",prev:"◀",next:"▶",dark:"Oscuro",memTitle:"Puerta Memoria",memSub:"Guarda las palabras que tocaron tu corazón",addMem:"+ Añadir",mediaType:"Tipo",workTitle:"Título",workPh:"Ej: Attack on Titan...",ep:"Episodio",epPh:"Ej: Ep. 3...",ts:"Tiempo",tsPh:"Ej: 23:14",quote:"Cita / Letra",quotePh:"Las palabras...",sit:"Situación",sitPh:"Cómo era la escena?",imp:"Por qué te llegó",impPh:"Esta frase me llegó...",moodL:"Tags",customT:"Tags personalizados",customPh:"Ej: amistad",saveMem:"Guardar",savedMsg:"Guardado ✓",searchPh:"Buscar...",all:"Todos",noMem:"Sin memorias\nGuarda palabras que te tocaron",delConfirm:"Eliminar?",edit:"Editar",del:"Eliminar",aiRefl:"Pedir opinión IA",aiThinking:"Pensando...",total:"memorias",autosave:"💾 Datos guardados automáticamente",sys:"Eres el AI de LifeMap. El usuario se recupera de depresión. Propón planes alcanzables con empatía."},
+fr:{appName:"LifeMap",tagline:"Dessine ta carte, à ton propre rythme",tabChat:"Apprentissage",tabSlide:"Slides",tabMemory:"Mémoire",tabHistory:"Historique",chatPh:"Dis-moi quels livres tu as...",send:"Envoyer",reset:"Réinitialiser",slideTopic:"Sujet",slidePh:"Ex: Machine Learning...",styleLabel:"Style",biz:"Professionnel",casual:"Décontracté",genSlide:"Générer Slides",generating:"Génération...",askQ:"Poser une question",askPh:"Votre question...",askBtn:"Demander",memoT:"Mémo",memoPh:"Notez des perspectives...",saveMemo:"Sauvegarder",histEmpty:"Pas d historique",slideOf:"/",prev:"◀",next:"▶",dark:"Sombre",memTitle:"Porte Mémoire",memSub:"Gardez les mots qui ont touché votre coeur",addMem:"+ Ajouter",mediaType:"Type",workTitle:"Titre",workPh:"Ex: L Attaque des Titans...",ep:"Episode",epPh:"Ex: Episode 3...",ts:"Horodatage",tsPh:"Ex: 23:14",quote:"Citation",quotePh:"Les mots...",sit:"Situation",sitPh:"Quelle etait la scene?",imp:"Pourquoi ca vous a touche",impPh:"Cette replique...",moodL:"Tags",customT:"Tags personnalises",customPh:"Ex: amitie",saveMem:"Sauvegarder",savedMsg:"Sauvegarde ✓",searchPh:"Rechercher...",all:"Tous",noMem:"Pas de souvenirs\nSauvegardez les mots qui vous ont touche",delConfirm:"Supprimer?",edit:"Modifier",del:"Supprimer",aiRefl:"Avis de l IA",aiThinking:"Reflexion...",total:"souvenirs",autosave:"💾 Donnees sauvegardees automatiquement",sys:"Tu es l IA de LifeMap. L utilisateur se remet d une depression. Propose des plans realistes avec empathie."}
+};
+
+const callClaude=async(messages,sys)=>{
+  const res=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages})
+  });
+  const d=await res.json();
+  return d.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+};
+
+const emptyForm=()=>({mediaType:"",workTitle:"",episode:"",timestamp:"",quote:"",situation:"",impression:"",moodTags:[],customTags:"",id:null});
+
+function App(){
+  const [lang,setLang]=useState(()=>load("lm_lang","ja"));
+  const [dark,setDark]=useState(()=>load("lm_dark",true));
+  const [tab,setTab]=useState("chat");
+  const [msgs,setMsgs]=useState(()=>load("lm_msgs",[]));
+  const [input,setInput]=useState("");
+  const [chatLoad,setChatLoad]=useState(false);
+  const chatEnd=useRef(null);
+  const [topic,setTopic]=useState("");
+  const [sStyle,setSStyle]=useState("casual");
+  const [slides,setSlides]=useState([]);
+  const [si,setSi]=useState(0);
+  const [slideLoad,setSlideLoad]=useState(false);
+  const [qa,setQa]=useState("");
+  const [qaAns,setQaAns]=useState("");
+  const [qaLoad,setQaLoad]=useState(false);
+  const [memo,setMemo]=useState("");
+  const [memos,setMemos]=useState(()=>load("lm_memos",[]));
+  const [hist,setHist]=useState(()=>load("lm_hist",[]));
+  const [mems,setMems]=useState(()=>load("lm_mems",[]));
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState(emptyForm());
+  const [savedAnim,setSavedAnim]=useState(false);
+  const [msearch,setMsearch]=useState("");
+  const [mfilter,setMfilter]=useState("all");
+  const [expId,setExpId]=useState(null);
+  const [aiR,setAiR]=useState({});
+  const [aiRL,setAiRL]=useState(null);
+
+  const t=T[lang];
+  const mediaList=MEDIA[lang];
+  const moodList=MOODS[lang];
+
+  useEffect(()=>save("lm_lang",lang),[lang]);
+  useEffect(()=>save("lm_dark",dark),[dark]);
+  useEffect(()=>save("lm_msgs",msgs),[msgs]);
+  useEffect(()=>save("lm_mems",mems),[mems]);
+  useEffect(()=>save("lm_memos",memos),[memos]);
+  useEffect(()=>save("lm_hist",hist),[hist]);
+  useEffect(()=>{chatEnd.current&&chatEnd.current.scrollIntoView({behavior:"smooth"});},[msgs]);
+  useEffect(()=>{if(msgs.length===0)initChat();},[lang]);
+
+  const gold="#c8a96e",blue=dark?"#7e8ec8":"#4a6fa5",rose="#c86e8e",green="#5ec88a",purple="#a96ec8";
+  const bg=dark?"#080810":"#f5f0e8",surf=dark?"#10101c":"#fff",surf2=dark?"#17172a":"#f0ebe0";
+  const bord=dark?"#2a2a45":"#ddd5c0",tx=dark?"#e8e4ff":"#1a1520",sub=dark?"#6868a0":"#80705a";
+  const cas=[gold,blue,rose,green,purple,"#c8956e","#6ec8c8"];
+  const slColors=[gold,blue,rose,green,purple,"#c8956e","#6ec8c8","#c8c86e","#8ec86e","#c86e6e"];
+  const slc=slides.length?slColors[si%10]:gold;
+
+  const initChat=async()=>{
+    setChatLoad(true);setMsgs([]);
+    try{
+      const r=await callClaude([{role:"user",content:"こんにちは、よろしくお願いします。"}],t.sys);
+      setMsgs([{role:"assistant",content:r}]);
+    }catch{setMsgs([{role:"assistant",content:"こんにちは！何を学びたいですか？"}]);}
+    setChatLoad(false);
+  };
+
+  const sendChat=async()=>{
+    if(!input.trim()||chatLoad)return;
+    const nm=[...msgs,{role:"user",content:input}];
+    setMsgs(nm);setInput("");setChatLoad(true);
+    try{const r=await callClaude(nm,t.sys);setMsgs([...nm,{role:"assistant",content:r}]);}
+    catch{setMsgs([...nm,{role:"assistant",content:"エラーが発生しました。"}]);}
+    setChatLoad(false);
+  };
+
+  const genSlides=async()=>{
+    if(!topic.trim()||slideLoad)return;
+    setSlideLoad(true);setSlides([]);setQaAns("");
+    const p=`Generate exactly 10 slides about: "${topic}". Style: ${sStyle==="biz"?t.biz:t.casual}. Output ONLY a valid JSON array. No markdown fences. Each item must have: title, content (bullet points separated by newline), emoji, evidence.`;
+    try{
+      const raw=await callClaude([{role:"user",content:p}],"You output only valid JSON arrays. No markdown, no explanation, no extra text.");
+      const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      setSlides(parsed);setSi(0);
+      setHist(h=>[{topic,slides:parsed,date:new Date().toLocaleDateString(lang)},...h].slice(0,20));
+    }catch(e){setSlides([{title:"Error",content:"スライド生成に失敗しました。もう一度試してください。",emoji:"⚠️",evidence:""}]);}
+    setSlideLoad(false);
+  };
+
+  const askQA=async()=>{
+    if(!qa.trim()||!slides.length||qaLoad)return;
+    setQaLoad(true);
+    try{const r=await callClaude([{role:"user",content:qa}],`Answer concisely about the slide titled "${slides[si].title}". Content: ${slides[si].content}`);setQaAns(r);}
+    catch{setQaAns("Error.");}
+    setQaLoad(false);
+  };
+
+  useEffect(()=>{
+    const h=e=>{
+      if(tab!=="slide"||!slides.length)return;
+      if(e.key==="ArrowRight")setSi(i=>Math.min(i+1,slides.length-1));
+      if(e.key==="ArrowLeft")setSi(i=>Math.max(i-1,0));
+    };
+    window.addEventListener("keydown",h);
+    return()=>window.removeEventListener("keydown",h);
+  },[tab,slides]);
+
+  const toggleMood=tag=>setForm(f=>({...f,moodTags:f.moodTags.includes(tag)?f.moodTags.filter(x=>x!==tag):[...f.moodTags,tag]}));
+
+  const saveMemory=()=>{
+    if(!form.workTitle.trim()&&!form.quote.trim())return;
+    const entry={...form,id:form.id||Date.now(),customTagsArr:form.customTags.split(",").map(s=>s.trim()).filter(Boolean),savedAt:new Date().toLocaleString(lang),mediaLabel:form.mediaType||(mediaList[mediaList.length-1])};
+    setMems(prev=>form.id?prev.map(m=>m.id===form.id?entry:m):[entry,...prev]);
+    setSavedAnim(true);
+    setTimeout(()=>{setSavedAnim(false);setShowForm(false);setForm(emptyForm());},1200);
+  };
+
+  const getAiRefl=async mem=>{
+    setAiRL(mem.id);
+    const ln={ja:"Japanese",en:"English",zh:"Chinese",ko:"Korean",es:"Spanish",fr:"French"}[lang];
+    const p=`Memory from ${mem.mediaLabel} "${mem.workTitle}"${mem.episode?" ("+mem.episode+")":""}. Quote: "${mem.quote}". Situation: "${mem.situation}". Why resonated: "${mem.impression}". Moods: ${mem.moodTags.join(", ")}. Write a warm reflection under 100 words in ${ln}.`;
+    try{const r=await callClaude([{role:"user",content:p}],"You are a thoughtful emotional companion.");setAiR(prev=>({...prev,[mem.id]:r}));}
+    catch{setAiR(prev=>({...prev,[mem.id]:"Error."}));}
+    setAiRL(null);
+  };
+
+  const filtered=mems.filter(m=>{
+    const tok=mfilter==="all"||m.mediaLabel===mfilter;
+    const q=msearch.toLowerCase();
+    const sok=!q||String(m.workTitle||"").toLowerCase().includes(q)||String(m.quote||"").toLowerCase().includes(q)||String(m.impression||"").toLowerCase().includes(q);
+    return tok&&sok;
+  });
+
+  const TI=({style,...p})=>React.createElement("input",{style:{padding:"8px 12px",borderRadius:10,border:`1px solid ${bord}`,background:surf2,color:tx,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",...style},...p});
+  const TA=({style,...p})=>React.createElement("textarea",{style:{padding:"8px 12px",borderRadius:10,border:`1px solid ${bord}`,background:surf2,color:tx,fontSize:13,outline:"none",fontFamily:"inherit",width:"100%",resize:"vertical",...style},...p});
+  const LBL=({children,color})=>React.createElement("div",{style:{fontSize:10,color:color||sub,fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",marginBottom:5}},children);
+  const BTN=({style,...p})=>React.createElement("button",{style:{cursor:"pointer",border:"none",fontFamily:"inherit",...style},...p});
+
+  return(
+    <div style={{minHeight:"100vh",background:bg,color:tx,fontFamily:"'Noto Sans JP',sans-serif",display:"flex",flexDirection:"column",transition:"background .3s"}}>
+
+      {/* ── Header ── */}
+      <header style={{padding:"10px 14px",borderBottom:`1px solid ${bord}`,display:"flex",alignItems:"center",gap:8,background:surf,position:"sticky",top:0,zIndex:200,flexWrap:"wrap"}}>
+        <div style={{flexShrink:0}}>
+          <div style={{fontSize:17,fontWeight:900,color:gold}}>✦ {t.appName}</div>
+          <div style={{fontSize:9,color:sub}}>{t.tagline}</div>
+        </div>
+        <div style={{display:"flex",gap:3,marginLeft:"auto",alignItems:"center",flexWrap:"wrap"}}>
+          {["chat","slide","memory","history"].map(tb=>(
+            <BTN key={tb} onClick={()=>setTab(tb)} style={{padding:"4px 10px",borderRadius:20,fontSize:10,fontWeight:700,background:tab===tb?gold:"transparent",color:tab===tb?"#1a1200":sub,whiteSpace:"nowrap"}}>
+              {tb==="chat"?t.tabChat:tb==="slide"?t.tabSlide:tb==="memory"?t.tabMemory:t.tabHistory}
+            </BTN>
+          ))}
+          <select value={lang} onChange={e=>{setLang(e.target.value);setMsgs([]);}} style={{padding:"3px 5px",borderRadius:8,border:`1px solid ${bord}`,background:surf2,color:tx,fontSize:10,cursor:"pointer"}}>
+            {Object.entries(LANGS).map(([k,v])=><option key={k} value={k}>{v.flag} {v.name}</option>)}
+          </select>
+          <BTN onClick={()=>setDark(d=>!d)} style={{padding:"3px 7px",borderRadius:8,border:`1px solid ${bord}`,background:"transparent",color:sub,fontSize:10}}>{t.dark}</BTN>
+        </div>
+      </header>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",maxWidth:860,width:"100%",margin:"0 auto",padding:"0 14px",boxSizing:"border-box"}}>
+        <div style={{textAlign:"center",fontSize:10,color:sub,padding:"5px 0",opacity:.6}}>{t.autosave}</div>
+
+        {/* ═══ CHAT ═══ */}
+        {tab==="chat"&&(
+          <div style={{display:"flex",flexDirection:"column",flex:1}}>
+            <div style={{flex:1,overflowY:"auto",padding:"12px 0",display:"flex",flexDirection:"column",gap:10,minHeight:260,maxHeight:"62vh"}}>
+              {msgs.map((m,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}} className="fi">
+                  <div style={{maxWidth:"76%",padding:"9px 13px",borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",background:m.role==="user"?gold:surf2,color:m.role==="user"?"#1a1200":tx,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap",boxShadow:"0 2px 8px rgba(0,0,0,.15)"}}>{m.content}</div>
+                </div>
+              ))}
+              {chatLoad&&(
+                <div style={{display:"flex",justifyContent:"flex-start"}}>
+                  <div style={{display:"flex",gap:4,padding:"9px 13px",background:surf2,borderRadius:"18px 18px 18px 4px"}}>
+                    {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:sub,animation:`bounce 1.2s ${i*.2}s infinite`}}/>)}
+                  </div>
+                </div>
+              )}
+              <div ref={chatEnd}/>
+            </div>
+            <div style={{display:"flex",gap:8,padding:"10px 0 14px",borderTop:`1px solid ${bord}`}}>
+              <input style={{flex:1,padding:"9px 13px",borderRadius:24,border:`1px solid ${bord}`,background:surf2,color:tx,fontSize:13,outline:"none",fontFamily:"inherit"}} value={input} onChange={e=>setInput(e.target.value)} placeholder={t.chatPh} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendChat()}/>
+              <BTN onClick={sendChat} disabled={chatLoad} style={{padding:"9px 15px",borderRadius:24,background:gold,color:"#1a1200",fontWeight:800,fontSize:12}}>{t.send}</BTN>
+              <BTN onClick={initChat} style={{padding:"9px 10px",borderRadius:24,border:`1px solid ${bord}`,background:"transparent",color:sub,fontSize:10}}>{t.reset}</BTN>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SLIDES ═══ */}
+        {tab==="slide"&&(
+          <div style={{overflowY:"auto",flex:1,paddingBottom:24}}>
+            <div style={{padding:"12px 0 0",display:"flex",flexDirection:"column",gap:10}}>
+              <div><LBL>{t.slideTopic}</LBL><TI value={topic} onChange={e=>setTopic(e.target.value)} placeholder={t.slidePh} onKeyDown={e=>e.key==="Enter"&&genSlides()}/></div>
+              <div>
+                <LBL>{t.styleLabel}</LBL>
+                <div style={{display:"flex",gap:8}}>
+                  {["biz","casual"].map(s=>(
+                    <BTN key={s} onClick={()=>setSStyle(s)} style={{flex:1,padding:"7px",borderRadius:10,border:`2px solid ${sStyle===s?gold:bord}`,background:sStyle===s?gold+"20":"transparent",color:sStyle===s?gold:sub,fontSize:12,fontWeight:700}}>
+                      {s==="biz"?t.biz:t.casual}
+                    </BTN>
+                  ))}
+                </div>
+              </div>
+              <BTN onClick={genSlides} disabled={slideLoad} style={{padding:"11px",borderRadius:12,background:`linear-gradient(135deg,${gold},${blue})`,color:"#fff",fontWeight:800,fontSize:13}}>{slideLoad?t.generating:t.genSlide}</BTN>
+            </div>
+
+            {slides.length>0&&(
+              <div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,padding:"10px 0"}}>
+                  <BTN onClick={()=>setSi(i=>Math.max(i-1,0))} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${bord}`,background:si===0?"transparent":surf2,color:si===0?bord:tx}}>{t.prev}</BTN>
+                  <span style={{fontSize:12,color:sub}}>{si+1} {t.slideOf} {slides.length}</span>
+                  <BTN onClick={()=>setSi(i=>Math.min(i+1,slides.length-1))} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${bord}`,background:si===slides.length-1?"transparent":surf2,color:si===slides.length-1?bord:tx}}>{t.next}</BTN>
+                </div>
+                <div style={{background:surf2,borderRadius:18,border:`2px solid ${slc}44`,overflow:"hidden",marginBottom:12}} className="fi">
+                  <div style={{background:`linear-gradient(135deg,${slc}28,${slc}0a)`,padding:"15px 18px",borderBottom:`1px solid ${slc}30`}}>
+                    <div style={{fontSize:30,marginBottom:5}}>{slides[si]&&slides[si].emoji}</div>
+                    <div style={{fontSize:17,fontWeight:800,color:slc}}>{slides[si]&&slides[si].title}</div>
+                  </div>
+                  <div style={{padding:"15px 18px"}}>
+                    <div style={{fontSize:13,lineHeight:2.1,whiteSpace:"pre-wrap"}}>{slides[si]&&slides[si].content}</div>
+                    {slides[si]&&slides[si].evidence&&<div style={{marginTop:10,padding:"6px 10px",borderRadius:8,background:slc+"18",border:`1px solid ${slc}44`,fontSize:11,color:slc}}>📊 {slides[si].evidence}</div>}
+                  </div>
+                </div>
+                <div style={{padding:"12px",background:surf,borderRadius:13,border:`1px solid ${bord}`,marginBottom:10}}>
+                  <LBL>💬 {t.askQ}</LBL>
+                  <div style={{display:"flex",gap:8}}>
+                    <TI style={{flex:1}} value={qa} onChange={e=>setQa(e.target.value)} placeholder={t.askPh} onKeyDown={e=>e.key==="Enter"&&askQA()}/>
+                    <BTN onClick={askQA} disabled={qaLoad} style={{padding:"7px 12px",borderRadius:9,background:blue,color:"#fff",fontSize:12,fontWeight:700}}>{qaLoad?"...":t.askBtn}</BTN>
+                  </div>
+                  {qaAns&&<div style={{marginTop:8,padding:"8px 12px",borderRadius:9,background:green+"18",border:`1px solid ${green}44`,fontSize:12,lineHeight:1.7}}>{qaAns}</div>}
+                </div>
+                <div style={{padding:"12px",background:surf,borderRadius:13,border:`1px solid ${bord}`}}>
+                  <LBL>📝 {t.memoT}</LBL>
+                  <div style={{display:"flex",gap:8}}>
+                    <TI style={{flex:1}} value={memo} onChange={e=>setMemo(e.target.value)} placeholder={t.memoPh} onKeyDown={e=>{if(e.key==="Enter"&&memo.trim()){setMemos(m=>[{text:memo,date:new Date().toLocaleString(lang),slide:slides[si]&&slides[si].title||""},...m]);setMemo("");}}}/>
+                    <BTN onClick={()=>{if(memo.trim()){setMemos(m=>[{text:memo,date:new Date().toLocaleString(lang),slide:slides[si]&&slides[si].title||""},...m]);setMemo("");}}} style={{padding:"7px 12px",borderRadius:9,background:green,color:"#0a1a10",fontSize:12,fontWeight:700}}>{t.saveMemo}</BTN>
+                  </div>
+                  {memos.length>0&&<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:4}}>{memos.slice(0,4).map((m,i)=><div key={i} style={{padding:"5px 9px",borderRadius:7,background:surf2,fontSize:11,color:sub,borderLeft:`3px solid ${green}`}}><strong style={{color:tx}}>{m.text}</strong><div style={{fontSize:10,marginTop:1}}>{m.slide&&"["+m.slide+"] "}{m.date}</div></div>)}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ MEMORY ═══ */}
+        {tab==="memory"&&(
+          <div style={{overflowY:"auto",flex:1,paddingBottom:32}}>
+            <div style={{padding:"14px 0 12px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:19,fontWeight:900,color:rose}}>🚪 {t.memTitle}</div>
+                <div style={{fontSize:11,color:sub,marginTop:2}}>{t.memSub}</div>
+                {mems.length>0&&<div style={{fontSize:10,color:sub,marginTop:2,opacity:.7}}>{mems.length} {t.total}</div>}
+              </div>
+              <BTN onClick={()=>{setForm(emptyForm());setShowForm(s=>!s);}} style={{padding:"7px 15px",borderRadius:20,background:showForm?surf2:`linear-gradient(135deg,${rose},${purple})`,color:showForm?sub:"#fff",fontWeight:800,fontSize:11,boxShadow:showForm?"none":`0 4px 14px ${rose}40`}}>
+                {showForm?"✕":t.addMem}
+              </BTN>
+            </div>
+
+            {showForm&&(
+              <div style={{background:surf,border:`1.5px solid ${rose}44`,borderRadius:18,padding:"14px",marginBottom:14}} className="pi">
+                <div style={{marginBottom:11}}>
+                  <LBL color={rose}>{t.mediaType}</LBL>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {mediaList.map(mt=><BTN key={mt} onClick={()=>setForm(f=>({...f,mediaType:mt}))} style={{padding:"4px 10px",borderRadius:20,border:`1.5px solid ${form.mediaType===mt?rose:bord}`,background:form.mediaType===mt?rose+"22":"transparent",color:form.mediaType===mt?rose:sub,fontSize:11,fontWeight:700}}>{MEMOJI[mt]||"✨"} {mt}</BTN>)}
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div><LBL>{t.workTitle}</LBL><TI value={form.workTitle} onChange={e=>setForm(f=>({...f,workTitle:e.target.value}))} placeholder={t.workPh}/></div>
+                  <div><LBL>{t.ep}</LBL><TI value={form.episode} onChange={e=>setForm(f=>({...f,episode:e.target.value}))} placeholder={t.epPh}/></div>
+                </div>
+                <div style={{marginBottom:8}}><LBL>⏱ {t.ts}</LBL><TI style={{width:120}} value={form.timestamp} onChange={e=>setForm(f=>({...f,timestamp:e.target.value}))} placeholder={t.tsPh}/></div>
+                <div style={{marginBottom:8}}><LBL color={gold}>💬 {t.quote}</LBL><TA rows={3} value={form.quote} onChange={e=>setForm(f=>({...f,quote:e.target.value}))} placeholder={t.quotePh}/></div>
+                <div style={{marginBottom:8}}><LBL>🎬 {t.sit}</LBL><TA rows={2} value={form.situation} onChange={e=>setForm(f=>({...f,situation:e.target.value}))} placeholder={t.sitPh}/></div>
+                <div style={{marginBottom:11}}><LBL>✍️ {t.imp}</LBL><TA rows={2} value={form.impression} onChange={e=>setForm(f=>({...f,impression:e.target.value}))} placeholder={t.impPh}/></div>
+                <div style={{marginBottom:9}}>
+                  <LBL>🏷 {t.moodL}</LBL>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {moodList.map(tag=><BTN key={tag} onClick={()=>toggleMood(tag)} style={{padding:"3px 9px",borderRadius:20,border:`1.5px solid ${form.moodTags.includes(tag)?purple:bord}`,background:form.moodTags.includes(tag)?purple+"28":"transparent",color:form.moodTags.includes(tag)?purple:sub,fontSize:11,fontWeight:700}}>{tag}</BTN>)}
+                  </div>
+                </div>
+                <div style={{marginBottom:12}}><LBL>🔖 {t.customT}</LBL><TI value={form.customTags} onChange={e=>setForm(f=>({...f,customTags:e.target.value}))} placeholder={t.customPh}/></div>
+                <BTN onClick={saveMemory} style={{width:"100%",padding:"11px",borderRadius:13,background:savedAnim?green:`linear-gradient(135deg,${rose},${purple})`,color:"#fff",fontWeight:800,fontSize:13,transition:"background .4s"}}>{savedAnim?t.savedMsg:t.saveMem}</BTN>
+              </div>
+            )}
+
+            {mems.length>0&&(
+              <div style={{display:"flex",gap:7,marginBottom:11,flexWrap:"wrap"}}>
+                <input style={{flex:1,minWidth:130,padding:"7px 11px",borderRadius:9,border:`1px solid ${bord}`,background:surf2,color:tx,fontSize:12,outline:"none",fontFamily:"inherit"}} value={msearch} onChange={e=>setMsearch(e.target.value)} placeholder={t.searchPh}/>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {[t.all,...mediaList].map((f,i)=>{
+                    const fv=i===0?"all":mediaList[i-1];
+                    return<BTN key={f} onClick={()=>setMfilter(fv)} style={{padding:"4px 8px",borderRadius:13,border:`1.5px solid ${mfilter===fv?rose:bord}`,background:mfilter===fv?rose+"20":"transparent",color:mfilter===fv?rose:sub,fontSize:10,fontWeight:700}}>{i===0?"":MEMOJI[mediaList[i-1]]||""} {f}</BTN>;
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mems.length===0?(
+              <div style={{textAlign:"center",color:sub,marginTop:50,fontSize:13,lineHeight:2.2,whiteSpace:"pre-line"}}>{t.noMem}</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:11}}>
+                {filtered.map((mem,idx)=>{
+                  const ca=cas[idx%cas.length];
+                  const exp=expId===mem.id;
+                  return(
+                    <div key={mem.id} className="fi" style={{background:surf2,borderRadius:17,border:`1.5px solid ${ca}44`,overflow:"hidden"}}>
+                      <div style={{background:`linear-gradient(135deg,${ca}22,${ca}08)`,padding:"10px 13px",display:"flex",alignItems:"center",gap:9,cursor:"pointer"}} onClick={()=>setExpId(exp?null:mem.id)}>
+                        <div style={{fontSize:18}}>{MEMOJI[mem.mediaLabel]||"✨"}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:800,color:ca,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{mem.workTitle||"—"}</div>
+                          <div style={{fontSize:10,color:sub,marginTop:1,display:"flex",gap:7,flexWrap:"wrap"}}>
+                            {mem.episode&&<span>{mem.episode}</span>}
+                            {mem.timestamp&&<span>⏱ {mem.timestamp}</span>}
+                            <span>{mem.savedAt}</span>
+                          </div>
+                        </div>
+                        <div style={{color:sub,fontSize:10,opacity:.6}}>{exp?"▲":"▼"}</div>
+                      </div>
+                      {mem.quote&&<div style={{padding:"9px 13px 7px"}}><div style={{fontSize:14,lineHeight:1.85,fontStyle:"italic",whiteSpace:"pre-wrap",paddingLeft:11,borderLeft:`3px solid ${ca}88`}}>"{mem.quote}"</div></div>}
+                      {!exp&&(mem.moodTags&&mem.moodTags.length>0||mem.customTagsArr&&mem.customTagsArr.length>0)&&(
+                        <div style={{padding:"0 13px 9px",display:"flex",flexWrap:"wrap",gap:4}}>
+                          {mem.moodTags&&mem.moodTags.slice(0,3).map(tag=><span key={tag} style={{padding:"2px 7px",borderRadius:12,background:purple+"20",border:`1px solid ${purple}44`,color:purple,fontSize:10,fontWeight:700}}>{tag}</span>)}
+                          {mem.customTagsArr&&mem.customTagsArr.slice(0,2).map(tag=><span key={tag} style={{padding:"2px 7px",borderRadius:12,background:gold+"18",border:`1px solid ${gold}44`,color:gold,fontSize:10}}>{tag}</span>)}
+                        </div>
+                      )}
+                      {exp&&(
+                        <div style={{padding:"4px 13px 13px"}} className="fi">
+                          {mem.situation&&<div style={{marginTop:8}}><div style={{fontSize:10,color:sub,fontWeight:700,marginBottom:3}}>🎬 {t.sit}</div><div style={{fontSize:12,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{mem.situation}</div></div>}
+                          {mem.impression&&<div style={{marginTop:8}}><div style={{fontSize:10,color:sub,fontWeight:700,marginBottom:3}}>✍️ {t.imp}</div><div style={{fontSize:12,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{mem.impression}</div></div>}
+                          {(mem.moodTags&&mem.moodTags.length>0||mem.customTagsArr&&mem.customTagsArr.length>0)&&(
+                            <div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:4}}>
+                              {mem.moodTags&&mem.moodTags.map(tag=><span key={tag} style={{padding:"2px 8px",borderRadius:12,background:purple+"22",border:`1px solid ${purple}44`,color:purple,fontSize:11,fontWeight:700}}>{tag}</span>)}
+                              {mem.customTagsArr&&mem.customTagsArr.map(tag=><span key={tag} style={{padding:"2px 8px",borderRadius:12,background:gold+"18",border:`1px solid ${gold}44`,color:gold,fontSize:11}}>{tag}</span>)}
+                            </div>
+                          )}
+                          <div style={{marginTop:10,padding:"9px 11px",background:rose+"12",borderRadius:11,border:`1px solid ${rose}35`}}>
+                            <BTN onClick={()=>getAiRefl(mem)} disabled={aiRL===mem.id} style={{padding:"5px 12px",borderRadius:14,background:rose+"33",color:rose,fontSize:11,fontWeight:700,marginBottom:aiR[mem.id]?7:0,opacity:aiRL===mem.id?.7:1}}>
+                              {aiRL===mem.id?"✦ "+t.aiThinking:"✦ "+t.aiRefl}
+                            </BTN>
+                            {aiR[mem.id]&&<div style={{fontSize:12,lineHeight:1.85,whiteSpace:"pre-wrap"}} className="fi">{aiR[mem.id]}</div>}
+                          </div>
+                          <div style={{marginTop:9,display:"flex",gap:7}}>
+                            <BTN onClick={()=>{setForm({...mem,customTags:mem.customTagsArr?mem.customTagsArr.join(", "):""});setShowForm(true);setExpId(null);window.scrollTo({top:0,behavior:"smooth"});}} style={{padding:"4px 11px",borderRadius:9,border:`1px solid ${bord}`,background:"transparent",color:sub,fontSize:11}}>✏️ {t.edit}</BTN>
+                            <BTN onClick={()=>{if(window.confirm(t.delConfirm))setMems(p=>p.filter(m=>m.id!==mem.id));}} style={{padding:"4px 11px",borderRadius:9,border:`1px solid ${rose}50`,background:"transparent",color:rose,fontSize:11}}>🗑 {t.del}</BTN>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ HISTORY ═══ */}
+        {tab==="history"&&(
+          <div style={{padding:"12px 0",display:"flex",flexDirection:"column",gap:10}}>
+            {hist.length===0?(
+              <div style={{textAlign:"center",color:sub,marginTop:40,fontSize:13}}>{t.histEmpty}</div>
+            ):hist.map((h,i)=>(
+              <div key={i} className="fi" style={{padding:"11px 14px",borderRadius:12,background:surf2,border:`1px solid ${bord}`,cursor:"pointer"}} onClick={()=>{setSlides(h.slides);setSi(0);setTab("slide");}}>
+                <div style={{fontSize:13,fontWeight:700,color:gold}}>{h.topic}</div>
+                <div style={{fontSize:10,color:sub,marginTop:2}}>{h.date} · {h.slides&&h.slides.length||0} slides</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
